@@ -1,21 +1,21 @@
 package com.example.yandex_map_test
 
 import android.os.Bundle
-import android.view.View
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContentProviderCompat.requireContext
 import by.kirich1409.viewbindingdelegate.viewBinding
 import com.example.yandex_map_test.databinding.ActivityMainBinding
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
-import com.yandex.mapkit.search.search_layer.PlacemarkListener
+import com.yandex.mapkit.map.IconStyle
+import com.yandex.mapkit.map.MapObject
+import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.runtime.image.ImageProvider
-import com.yandex.runtime.ui_view.ViewProvider
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), MapObjectTapListener {
 
 
     private val binding by viewBinding(ActivityMainBinding::bind)
@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         MapKitFactory.initialize(this)
         setContentView(R.layout.activity_main)
         binding.mapview.map.move(
-            CameraPosition(Point(59.940082, 30.312814), 20.0f, 0.0f, 0.0f),
+            CameraPosition(Point(59.940082, 30.312814), 10.0f, 0.0f, 0.0f),
             Animation(Animation.Type.SMOOTH, 0F),
             null
         )
@@ -37,9 +37,22 @@ class MainActivity : AppCompatActivity() {
     private fun initViewModel() {
         val lukes = viewModel.fetchLukes()
 
-        binding.mapview.map.mapObjects.addPlacemark(
-            lukes.first().point,
-        )
+
+
+        val points = lukes.map {
+            val drawable = if (it.status == LukeStatus.CLOSED) R.drawable.luke_closed else R.drawable.luke
+            binding.mapview.map.mapObjects.addPlacemark(
+                it.point,
+                ImageProvider.fromResource(this, drawable),
+                IconStyle().apply {
+                    scale = 0.05f
+                }
+            ).apply {
+                userData = it
+                addTapListener(this@MainActivity)
+            }
+        }
+
     }
 
 
@@ -53,5 +66,13 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         binding.mapview.onStop()
         MapKitFactory.getInstance().onStop()
+    }
+
+    override fun onMapObjectTap(mapObject: MapObject, p1: Point): Boolean {
+        return if (mapObject.userData !is Luke) false
+        else {
+            Toast.makeText(this, "${(mapObject.userData as Luke).status}", Toast.LENGTH_SHORT).show()
+            true
+        }
     }
 }
